@@ -35,16 +35,18 @@ class Progbar(object):
     self.total_width = 0
     self.seen_so_far = 0
 
-  def update(self, current, values=None, force=False):
+  def update(self, current=None, values=None, force=False):
     """Update progress bar, and print to standard output if `force`
     is True, or the last update was completed longer than `interval`
     amount of time ago, or `current` >= `target`.
 
     The written output is the progress bar and all unique values.
+    
+    Modified by @eaott to not require a current value.
 
     Args:
-      current: int.
-        Index of current step.
+      current: int or None.
+        Index of current step. If None, will update to next integer.
       values: dict of str to float.
         Dict of name by value-for-last-step. The progress bar
         will display averages for these values.
@@ -57,7 +59,12 @@ class Progbar(object):
     for k, v in six.iteritems(values):
       self.stored_values[k] = v
 
-    self.seen_so_far = current
+    # Modified section
+    if current is not None:
+      self.seen_so_far = current
+    else:
+      self.seen_so_far += 1
+      current = self.seen_so_far
 
     now = time.time()
     if (not force and
