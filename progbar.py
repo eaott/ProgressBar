@@ -8,9 +8,11 @@ import six
 import sys
 import time
 
+# @eaott: See git commit history for how this has been modified
+# from the original Edward version.
 
 class Progbar(object):
-  def __init__(self, target, width=30, interval=0.01, verbose=1):
+  def __init__(self, target, width=30, interval=0.01, avg=False):
     """(Yet another) progress bar.
 
     Args:
@@ -21,19 +23,20 @@ class Progbar(object):
       interval: float.
         Minimum time (in seconds) for progress bar to be displayed
         during updates.
-      verbose: int.
-        Level of verbosity. 0 suppresses output; 1 is default.
+      avg: boolean.
+        Whether to report the average or current value of any values
+        applied in the update step.
     """
     self.target = target
     self.width = width
     self.interval = interval
-    self.verbose = verbose
 
     self.stored_values = {}
     self.start = time.time()
     self.last_update = 0
     self.total_width = 0
     self.seen_so_far = 0
+    self.avg = avg
 
   def update(self, current=None, values=None, force=False):
     """Update progress bar, and print to standard output if `force`
@@ -41,7 +44,7 @@ class Progbar(object):
     amount of time ago, or `current` >= `target`.
 
     The written output is the progress bar and all unique values.
-    
+
     Modified by @eaott to not require a current value.
 
     Args:
@@ -56,15 +59,22 @@ class Progbar(object):
     if values is None:
       values = {}
 
-    for k, v in six.iteritems(values):
-      self.stored_values[k] = v
-
     # Modified section
     if current is not None:
       self.seen_so_far = current
     else:
       self.seen_so_far += 1
       current = self.seen_so_far
+
+    if self.avg:
+      for k, v in six.iteritems(values):
+        if k not in self.stored_values:
+          self.stored_values[k] = 0
+        self.stored_values[k] += v
+    else:
+      for k, v in six.iteritems(values):
+        self.stored_values[k] = v
+
 
     now = time.time()
     if (not force and
@@ -73,8 +83,6 @@ class Progbar(object):
       return
 
     self.last_update = now
-    if self.verbose == 0:
-      return
 
     prev_total_width = self.total_width
     sys.stdout.write("\b" * prev_total_width)
@@ -109,6 +117,8 @@ class Progbar(object):
       info += ' Elapsed: %ds' % (now - self.start)
 
     for k, v in six.iteritems(self.stored_values):
+      if self.avg:
+        v = v / current
       info += ' | {0:s}: {1:0.3f}'.format(k, v)
 
     self.total_width = len(bar) + len(info)
