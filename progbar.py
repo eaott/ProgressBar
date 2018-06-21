@@ -52,7 +52,8 @@ class Progbar(object):
         Index of current step. If None, will update to next integer.
       values: dict of str to float.
         Dict of name by value-for-last-step. The progress bar
-        will display averages for these values.
+        will display averages or current value for these values (based on
+        avg parameter in the constructor).
       force: bool.
         Whether to force visual progress update.
     """
@@ -93,13 +94,15 @@ class Progbar(object):
     bar = '%%%dd/%%%dd' % (n_digits, n_digits) % (current, self.target)
     bar += ' [{0}%]'.format(str(int(current / self.target * 100)).rjust(3))
     bar += ' '
+    len_counter = len(bar)
     prog_width = int(self.width * float(current) / self.target)
     if prog_width > 0:
       try:
+        # This unicode symbol registers as more than one character,
+        # so the length can't be trusted here.
         bar += ('█' * prog_width)
       except UnicodeEncodeError:
         bar += ('*' * prog_width)
-
     bar += (' ' * (self.width - prog_width))
     sys.stdout.write(bar)
 
@@ -115,18 +118,17 @@ class Progbar(object):
       info += ' ETA: %ds' % eta
     else:
       info += ' Elapsed: %ds' % (now - self.start)
-
     for k, v in six.iteritems(self.stored_values):
       if self.avg:
         v = v / current
       info += ' | {0:s}: {1:0.3f}'.format(k, v)
 
-    self.total_width = len(bar) + len(info)
+    self.total_width = len_counter + self.width + len(info)
     if prev_total_width > self.total_width:
+      # print("entered condition")
       info += ((prev_total_width - self.total_width) * " ")
-
+    self.total_width = len_counter + self.width + len(info)
     sys.stdout.write(info)
     sys.stdout.flush()
-
     if current >= self.target:
       sys.stdout.write("\n")
